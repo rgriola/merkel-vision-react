@@ -128,9 +128,9 @@ const LocationForm = ({ open, onClose, location = null }) => {
         description,
         notes,
         // Required fields for Firestore rules
-        state: window.lastGeocodeResult?.state || '',
-        city: window.lastGeocodeResult?.city || '',
-        category: 'filming_location', // Default category
+        state: window.lastGeocodeResult?.state || 'Unknown',
+        city: window.lastGeocodeResult?.city || 'Unknown', 
+        category: 'other', // Use 'other' since 'filming_location' is not in allowed list
         addedBy: 'user' // Default value
       };
       
@@ -138,6 +138,7 @@ const LocationForm = ({ open, onClose, location = null }) => {
       delete window.lastGeocodeResult;
       
       console.log('💾 Saving location data:', locationData);
+      console.log('🔍 Geocoding result stored:', window.lastGeocodeResult);
       
       if (location) {
         // Update existing location

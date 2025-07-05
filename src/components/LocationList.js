@@ -18,7 +18,7 @@ import LocationCard from './LocationCard';
 
 const LocationList = () => {
   const { locations, loading, error, setSelectedLocation, deleteLocation } = useLocations();
-  const { centerMap, showAllMarkers } = useGoogleMaps();
+  const { centerMap, showAllMarkers, mapInitialized } = useGoogleMaps();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
@@ -57,7 +57,14 @@ const LocationList = () => {
   const handleViewLocation = (location) => {
     console.log('=== VIEW LOCATION TRIGGERED ===');
     console.log('Raw location object:', location);
-    console.log('Location keys:', Object.keys(location));
+    console.log('Map initialized:', mapInitialized);
+    
+    // Check if map is initialized first
+    if (!mapInitialized) {
+      console.error('❌ Map not initialized yet');
+      alert('Map is still loading. Please wait a moment and try again.');
+      return;
+    }
     
     setSelectedLocation(location);
     
