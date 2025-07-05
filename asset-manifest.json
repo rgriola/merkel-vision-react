@@ -1,15 +1,15 @@
 {
   "files": {
     "main.css": "/merkel-vision-react/static/css/main.f855e6bc.css",
-    "main.js": "/merkel-vision-react/static/js/main.33631a00.js",
+    "main.js": "/merkel-vision-react/static/js/main.dda8e035.js",
     "static/js/453.5fee8680.chunk.js": "/merkel-vision-react/static/js/453.5fee8680.chunk.js",
     "index.html": "/merkel-vision-react/index.html",
     "main.f855e6bc.css.map": "/merkel-vision-react/static/css/main.f855e6bc.css.map",
-    "main.33631a00.js.map": "/merkel-vision-react/static/js/main.33631a00.js.map",
+    "main.dda8e035.js.map": "/merkel-vision-react/static/js/main.dda8e035.js.map",
     "453.5fee8680.chunk.js.map": "/merkel-vision-react/static/js/453.5fee8680.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.f855e6bc.css",
-    "static/js/main.33631a00.js"
+    "static/js/main.dda8e035.js"
   ]
 }
