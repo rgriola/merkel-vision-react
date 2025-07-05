@@ -93,8 +93,20 @@ const LocationList = () => {
         return;
       }
       
-      // Always pass numeric values to centerMap
-      centerMap(numLat, numLng, 15);
+      // Force a higher zoom level and add a small delay to ensure map is ready
+      setTimeout(() => {
+        console.log('Attempting to center map with delay...');
+        const success = centerMap(numLat, numLng, 18); // Higher zoom level
+        console.log('Center map result:', success);
+        
+        // If centering failed, try again with a different approach
+        if (!success) {
+          console.log('First attempt failed, trying again...');
+          setTimeout(() => {
+            centerMap(numLat, numLng, 16);
+          }, 500);
+        }
+      }, 100);
     } else {
       console.error('Invalid location coordinates:', location);
     }

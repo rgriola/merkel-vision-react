@@ -180,8 +180,20 @@ class MapsService {
         this.map.setZoom(zoom);
       }
       
+      // Remove any existing temporary marker first
+      if (this.tempMarker) {
+        try {
+          this.tempMarker.setMap(null);
+          this.tempMarker = null;
+        } catch (error) {
+          console.warn('Error removing previous temporary marker:', error);
+        }
+      }
+      
       // Add a temporary highlight marker to show where we centered
       this.addTemporaryMarker(lat, lng);
+      
+      console.log('Map successfully centered and temporary marker added');
       
       return true;
     } catch (error) {
@@ -229,14 +241,16 @@ class MapsService {
           position,
           map: this.map,
           title: 'Selected Location',
-          content: pinElement ? pinElement.element : undefined
+          content: pinElement ? pinElement.element : undefined,
+          zIndex: 1000, // Higher z-index than regular markers
+          collisionBehavior: window.google.maps.CollisionBehavior?.OPTIONAL_AND_HIDES_LOWER_PRIORITY
         });
         
         // Store position reference separately for AdvancedMarkerElement
         // This helps with methods that expect getPosition()
         this.tempMarker._position = position;
         
-        console.log('Successfully created temporary AdvancedMarkerElement');
+        console.log('Successfully created temporary AdvancedMarkerElement at:', position);
       } else {
         throw new Error('AdvancedMarkerElement constructor not available');
       }
@@ -254,9 +268,18 @@ class MapsService {
           position,
           map: this.map,
           animation: window.google.maps.Animation.DROP,
-          title: 'Selected Location'
+          title: 'Selected Location',
+          zIndex: 1000, // Higher z-index than regular markers
+          icon: {
+            path: window.google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#FF4136',
+            fillOpacity: 1,
+            strokeColor: '#FFFFFF',
+            strokeWeight: 2
+          }
         });
-        console.log('Successfully created temporary legacy Marker');
+        console.log('Successfully created temporary legacy Marker with custom icon at:', position);
       } catch (markerError) {
         console.error('Failed to create temporary marker:', markerError);
         return null;
@@ -364,7 +387,9 @@ class MapsService {
           position,
           map: this.map,
           title: location.name || 'Location',
-          content: pinElement ? pinElement.element : undefined
+          content: pinElement ? pinElement.element : undefined,
+          zIndex: 999, // Ensure marker appears above other elements
+          collisionBehavior: window.google.maps.CollisionBehavior?.OPTIONAL_AND_HIDES_LOWER_PRIORITY
         });
         
         // Add compatibility methods for AdvancedMarkerElement to work with legacy code
@@ -379,7 +404,13 @@ class MapsService {
         // Store position in _position property for additional compatibility
         marker._position = position;
         
-        console.log('Successfully created AdvancedMarkerElement with compatibility methods');
+        console.log('Successfully created AdvancedMarkerElement with compatibility methods at position:', position);
+        console.log('Marker visibility check:', {
+          map: !!marker.map,
+          position: marker.position,
+          content: !!marker.content,
+          zIndex: marker.zIndex
+        });
       } else {
         throw new Error('AdvancedMarkerElement constructor not available');
       }
@@ -397,9 +428,17 @@ class MapsService {
           position,
           map: this.map,
           title: location.name || 'Location',
-          animation: window.google.maps.Animation.DROP
+          animation: window.google.maps.Animation.DROP,
+          zIndex: 999, // Ensure marker appears above other elements
+          optimized: false // Disable optimization for better visibility
         });
-        console.log('Successfully created legacy Marker');
+        console.log('Successfully created legacy Marker at position:', position);
+        console.log('Legacy marker visibility check:', {
+          map: !!marker.map,
+          position: marker.getPosition(),
+          zIndex: marker.zIndex,
+          visible: marker.getVisible()
+        });
       } catch (markerError) {
         console.error('Failed to create any marker:', markerError);
         return null;
