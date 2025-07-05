@@ -16,7 +16,6 @@ import { useLocations } from '../contexts/locations.context';
 
 // Components
 import MapComponent from '../components/MapComponent';
-import SearchComponent from '../components/SearchComponent';
 import PlaceSearchComponent from '../components/PlaceSearchComponent';
 import LocationList from '../components/LocationList';
 
@@ -58,7 +57,7 @@ const Dashboard = () => {
       <Container maxWidth="xl" sx={{ mt: 4, mb: 4 }}>
         <Grid container spacing={3}>
           {/* Map Section */}
-          <Grid item xs={12}>
+          <Grid sx={{ gridColumn: 'span 12' }}>
             <Paper elevation={2} sx={{ p: 2 }}>
               <Typography variant="h5" gutterBottom>
                 Location Map
@@ -66,22 +65,16 @@ const Dashboard = () => {
               <Divider sx={{ mb: 2 }} />
               <Box sx={{ mb: 2 }}>
                 <Typography variant="subtitle1" gutterBottom>
-                  Modern Places API (July 2025)
+                  Location Search (Places API July 2025)
                 </Typography>
                 <PlaceSearchComponent onPlaceSelected={(place) => console.log('Selected place:', place)} />
-              </Box>
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Legacy Search (Fallback)
-                </Typography>
-                <SearchComponent />
               </Box>
               <MapComponent />
             </Paper>
           </Grid>
 
           {/* Locations List Section */}
-          <Grid item xs={12} md={12}>
+          <Grid sx={{ gridColumn: 'span 12' }}>
             <Paper elevation={2} sx={{ p: 2 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <Typography variant="h5">

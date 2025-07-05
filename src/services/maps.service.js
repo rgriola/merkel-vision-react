@@ -47,9 +47,12 @@ class MapsService {
       // Initialize geocoder
       this.geocoder = new window.google.maps.Geocoder();
       
-      // Initialize places service if available
+      // Places API - Using the recommended approach over PlacesService
       if (window.google.maps.places) {
-        this.placesService = new window.google.maps.places.PlacesService(this.map);
+        console.log('✅ Places API available');
+        
+        // We don't need to initialize PlacesService as we're using
+        // Place.findPlaceFromQuery/findPlaceFromPhoneNumber/searchByText instead
       }
       
       // Set up map event listeners
@@ -91,20 +94,43 @@ class MapsService {
 
   // Add a temporary marker for new location selection
   addTemporaryMarker(lat, lng) {
-    if (!this.map) return null;
+    if (!this.map) {
+      console.log('Map not initialized yet, cannot add marker');
+      return null;
+    }
     
     // Remove any existing temporary marker
     if (this.tempMarker) {
-      this.tempMarker.setMap(null);
+      try {
+        this.tempMarker.setMap(null);
+      } catch (error) {
+        console.warn('Error clearing previous marker:', error);
+      }
     }
     
-    // Create new marker
-    this.tempMarker = new window.google.maps.Marker({
-      position: { lat, lng },
-      map: this.map,
-      animation: window.google.maps.Animation.DROP,
-      title: 'Selected Location'
-    });
+    // Create new marker - always try AdvancedMarkerElement first
+    try {
+      // Check if AdvancedMarkerElement is available properly
+      if (window.google.maps.marker && typeof window.google.maps.marker.AdvancedMarkerElement === 'function') {
+        const position = { lat, lng };
+        this.tempMarker = new window.google.maps.marker.AdvancedMarkerElement({
+          position,
+          map: this.map,
+          title: 'Selected Location'
+        });
+      } else {
+        throw new Error('AdvancedMarkerElement constructor not available');
+      }
+    } catch (error) {
+      // Fallback to legacy Marker if AdvancedMarkerElement fails
+      console.warn('AdvancedMarkerElement not available, using legacy Marker:', error.message);
+      this.tempMarker = new window.google.maps.Marker({
+        position: { lat, lng },
+        map: this.map,
+        animation: window.google.maps.Animation.DROP,
+        title: 'Selected Location'
+      });
+    }
     
     return this.tempMarker;
   }
@@ -125,13 +151,34 @@ class MapsService {
       return marker;
     }
     
-    // Create a new marker
-    const marker = new window.google.maps.Marker({
-      position: { lat: location.lat, lng: location.lng },
-      map: this.map,
-      title: location.name || 'Location',
-      animation: window.google.maps.Animation.DROP
-    });
+    // Create a new marker - always try to use AdvancedMarkerElement first
+    let marker;
+    
+    try {
+      // Check if AdvancedMarkerElement is available - with proper path
+      if (window.google.maps.marker && typeof window.google.maps.marker.AdvancedMarkerElement === 'function') {
+        // Create position object
+        const position = { lat: location.lat, lng: location.lng };
+        
+        // Use the recommended AdvancedMarkerElement
+        marker = new window.google.maps.marker.AdvancedMarkerElement({
+          position,
+          map: this.map,
+          title: location.name || 'Location'
+        });
+      } else {
+        throw new Error('AdvancedMarkerElement not available');
+      }
+    } catch (error) {
+      // Fallback to legacy Marker if AdvancedMarkerElement fails
+      console.warn('AdvancedMarkerElement not available, using legacy Marker:', error.message);
+      marker = new window.google.maps.Marker({
+        position: { lat: location.lat, lng: location.lng },
+        map: this.map,
+        title: location.name || 'Location',
+        animation: window.google.maps.Animation.DROP
+      });
+    }
     
     // Add click listener
     marker.addListener('click', () => {
@@ -289,17 +336,39 @@ class MapsService {
     }
   }
 
-  // Set up PlaceAutocompleteElement for address search
+  /**
+   * Set up PlaceAutocompleteElement for address search using the latest stable Places API
+   * @see https://developers.google.com/maps/documentation/javascript/place-autocomplete
+   * @param {HTMLElement} containerElement - DOM element to attach the PlaceAutocompleteElement
+   * @returns {Element|null} - The PlaceAutocompleteElement or null if setup failed
+   */
   setupPlaceAutocomplete(containerElement) {
-    if (!window.google?.maps?.places?.PlaceAutocompleteElement) {
-      console.error('❌ PlaceAutocompleteElement not available');
+    // Check if Google Maps API is loaded
+    if (!window.google || !window.google.maps) {
+      console.error('❌ Google Maps API not loaded');
+      return null;
+    }
+    
+    // Check if Places API is available
+    if (!window.google.maps.places) {
+      console.error('❌ Places library not loaded - please ensure libraries=places is in the API URL');
+      return null;
+    }
+    
+    // Check if PlaceAutocompleteElement is available
+    if (typeof window.google.maps.places.PlaceAutocompleteElement !== 'function') {
+      console.error('❌ PlaceAutocompleteElement not available - please ensure the Places API is enabled in your Google Cloud Console');
+      console.log('Available Google Maps objects:', Object.keys(window.google.maps));
+      console.log('Available Places objects:', window.google.maps.places ? Object.keys(window.google.maps.places) : 'None');
       return null;
     }
     
     try {
+      console.log('Creating PlaceAutocompleteElement...');
       // Create the Place Autocomplete Element with the new Places API
       const placeAutocomplete = new window.google.maps.places.PlaceAutocompleteElement({
-        locationBias: this.map ? this.map.getBounds() : null,
+        // Don't make this dependent on the map being initialized
+        locationBias: null,
         componentRestrictions: googleMapsConfig.places.componentRestrictions,
         types: googleMapsConfig.places.types
       });
@@ -322,17 +391,23 @@ class MapsService {
             throw new Error('Selected place has no location data');
           }
           
-          // Center map and add marker
+          // Center map and add marker if map is initialized
           const lat = place.location.lat;
           const lng = place.location.lng;
           
-          if (place.viewport) {
-            this.map.fitBounds(place.viewport);
+          if (this.map) {
+            console.log('Map available, centering on selected place');
+            if (place.viewport) {
+              this.map.fitBounds(place.viewport);
+            } else {
+              this.centerMap(lat, lng, this.searchZoom);
+            }
+            
+            // Add temporary marker
+            this.addTemporaryMarker(lat, lng);
           } else {
-            this.centerMap(lat, lng, this.searchZoom);
+            console.log('Map not yet initialized, storing location data only');
           }
-          
-          // Add temporary marker
           this.addTemporaryMarker(lat, lng);
           
           // Extract address components
@@ -372,10 +447,18 @@ class MapsService {
         }
       });
       
-      console.log('✅ PlaceAutocompleteElement initialized');
+      console.log('✅ PlaceAutocompleteElement initialized successfully');
       return placeAutocomplete;
     } catch (error) {
       console.error('❌ Error setting up PlaceAutocompleteElement:', error);
+      
+      // Add diagnostic information for troubleshooting
+      console.error('📌 Places API Troubleshooting Guide:');
+      console.error('1. Ensure the Places API is enabled in Google Cloud Console: https://console.cloud.google.com/apis/library/places-backend.googleapis.com');
+      console.error('2. Check API key restrictions (allowed referrers/domains)');
+      console.error('3. Verify billing is properly set up for your Google Cloud project');
+      console.error('4. Make sure your browser supports the latest Places API');
+      
       return null;
     }
   }

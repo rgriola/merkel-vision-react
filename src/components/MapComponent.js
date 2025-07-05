@@ -28,12 +28,24 @@ const MapComponent = () => {
   // Initialize map when Google Maps API is loaded
   useEffect(() => {
     if (isLoaded && mapContainerRef.current && !mapInitialized) {
-      try {
-        initMap(mapContainerRef.current);
-      } catch (error) {
-        console.error('Error initializing map:', error);
-        setMapError(error.message);
-      }
+      // Add a small delay to ensure Google Maps is fully initialized
+      setTimeout(() => {
+        try {
+          if (!window.google || !window.google.maps || !window.google.maps.Map) {
+            console.error('Google Maps API not fully loaded');
+            setMapError('Google Maps API not properly loaded. Please refresh the page.');
+            return;
+          }
+          
+          const success = initMap(mapContainerRef.current);
+          if (!success) {
+            setMapError('Failed to initialize map. Check console for details.');
+          }
+        } catch (error) {
+          console.error('Error initializing map:', error);
+          setMapError(`Map initialization error: ${error.message}`);
+        }
+      }, 500);
     }
   }, [isLoaded, mapInitialized, initMap]);
 

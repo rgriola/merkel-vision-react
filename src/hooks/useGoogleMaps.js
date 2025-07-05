@@ -11,23 +11,66 @@ export const useGoogleMaps = () => {
   
   // Load Google Maps API
   useEffect(() => {
-    if (window.google && window.google.maps) {
-      // API already loaded
+    // Function to check if Google Maps is fully loaded
+    const isGoogleMapsLoaded = () => {
+      return Boolean(
+        window.google && 
+        window.google.maps && 
+        window.google.maps.Map && 
+        window.google.maps.places
+      );
+    };
+
+    // If already loaded, just set state
+    if (isGoogleMapsLoaded()) {
+      console.log('Google Maps API already loaded');
       setIsLoaded(true);
       return;
     }
     
+    // Check if the script is already being loaded
+    const existingScript = document.getElementById('google-maps-script');
+    if (existingScript) {
+      console.log('Google Maps script is already loading, waiting...');
+      
+      // Check periodically if Maps is loaded
+      const checkInterval = setInterval(() => {
+        if (isGoogleMapsLoaded()) {
+          console.log('Google Maps API detected as loaded');
+          setIsLoaded(true);
+          setLoadError(null);
+          clearInterval(checkInterval);
+        }
+      }, 200);
+      
+      // Also attach to the existing load event
+      existingScript.addEventListener('load', () => {
+        console.log('Existing Google Maps script load event fired');
+      });
+      
+      return () => clearInterval(checkInterval);
+    }
+    
+    // Create a globally unique callback name to avoid conflicts
+    const callbackName = `initGoogleMapsCallback_${Date.now()}`;
+    
+    // Define the callback function
+    window[callbackName] = () => {
+      console.log('Google Maps API loaded via callback');
+      setIsLoaded(true);
+      setLoadError(null);
+    };
+    
+    // Create and add the script
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsConfig.apiKey}&libraries=places&loading=async`;
+    script.id = 'google-maps-script'; 
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsConfig.apiKey}&libraries=places&callback=${callbackName}&loading=async`;
     script.async = true;
     script.defer = true;
     
-    script.addEventListener('load', () => {
-      setIsLoaded(true);
-      setLoadError(null);
-    });
-    
+    // Error handling
     script.addEventListener('error', (error) => {
+      console.error('Failed to load Google Maps:', error);
       setLoadError(error);
     });
     

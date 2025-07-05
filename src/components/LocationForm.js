@@ -188,7 +188,7 @@ const LocationForm = ({ open, onClose, location = null }) => {
           />
           
           <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
               <TextField
                 margin="normal"
                 required
@@ -201,7 +201,7 @@ const LocationForm = ({ open, onClose, location = null }) => {
                 disabled={loading}
               />
             </Grid>
-            <Grid item xs={12} md={6}>
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
               <TextField
                 margin="normal"
                 required

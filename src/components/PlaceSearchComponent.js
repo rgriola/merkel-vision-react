@@ -18,14 +18,17 @@ const PlaceSearchComponent = ({ onPlaceSelected }) => {
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
 
-  const { isLoaded, mapInitialized } = useGoogleMaps();
+  // We only need to know if the API is loaded, not if the map is initialized
+  const { isLoaded } = useGoogleMaps();
 
   useEffect(() => {
-    // Initialize the PlaceAutocompleteElement when maps are ready
-    if (isLoaded && mapInitialized && searchContainerRef.current) {
+    // Initialize the PlaceAutocompleteElement when maps API is loaded
+    // Note: We don't need to wait for map initialization
+    if (isLoaded && searchContainerRef.current) {
       const initializeSearch = async () => {
         setSearching(true);
         try {
+          console.log('Initializing PlaceAutocomplete...');
           // Get the maps service instance
           const mapsService = await import('../services/maps.service').then(module => module.default);
           
@@ -33,7 +36,8 @@ const PlaceSearchComponent = ({ onPlaceSelected }) => {
           const placeAutocomplete = mapsService.setupPlaceAutocomplete(searchContainerRef.current);
           
           if (!placeAutocomplete) {
-            setError('Failed to initialize search component');
+            console.error('Failed to initialize PlaceAutocomplete element');
+            setError('Failed to initialize search component. Please ensure the Google Places API is enabled in your Google Cloud Console.');
             return;
           }
           
@@ -59,7 +63,7 @@ const PlaceSearchComponent = ({ onPlaceSelected }) => {
       
       initializeSearch();
     }
-  }, [isLoaded, mapInitialized, onPlaceSelected]);
+  }, [isLoaded, onPlaceSelected]);
 
   const handleCloseSnackbar = (event, reason) => {
     if (reason === 'clickaway') {

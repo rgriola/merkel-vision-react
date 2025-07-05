@@ -17,7 +17,7 @@ Visit the live application: [https://rgriola.github.io/merkel-vision-react](http
 
 - **Frontend**: React 19, Material UI 7
 - **Backend**: Firebase 11 (Authentication, Firestore)
-- **APIs**: Google Maps JavaScript API, Places API (July 2025), Geocoding API
+- **APIs**: Google Maps JavaScript API, Places API (latest stable), Geocoding API
 - **Routing**: React Router 7
 - **Deployment**: GitHub Pages via GitHub Actions
 
@@ -32,6 +32,17 @@ The project follows a modular structure for maintainability:
 - `src/hooks/` - Custom React hooks
 - `src/config/` - Configuration files
 - `src/utils/` - Utility functions
+
+## Google Places API Integration
+
+This application uses the latest Google Places API with `PlaceAutocompleteElement`, providing modern address search functionality:
+
+- Enhanced accessibility with better screen reader support
+- Improved user interface for address selection
+- Modern promise-based API for better error handling
+- Comprehensive place data with location, viewport, and address components
+
+For detailed implementation information, see [PLACES_API.md](./PLACES_API.md).
 
 ## Setup Instructions
 
