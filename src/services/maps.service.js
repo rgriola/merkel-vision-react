@@ -18,7 +18,24 @@ class MapsService {
 
   // Check if Google Maps API is loaded
   isApiLoaded() {
-    return typeof window.google !== 'undefined' && window.google.maps;
+    const coreLoaded = typeof window.google !== 'undefined' && window.google.maps;
+    
+    if (!coreLoaded) {
+      return false;
+    }
+    
+    // Check for required APIs but don't block if they're missing
+    // as we can fallback in many cases
+    if (!window.google.maps.places) {
+      console.warn('⚠️ Google Maps Places API not loaded');
+    }
+    
+    // Explicitly check for marker library
+    if (!window.google.maps.marker) {
+      console.warn('⚠️ Google Maps marker library not loaded - advanced markers will not be available');
+    }
+    
+    return true;
   }
 
   // Initialize map in the provided HTML element
@@ -29,6 +46,15 @@ class MapsService {
     }
 
     try {
+      // Log available libraries for debugging
+      console.info('Google Maps libraries available at initialization:', {
+        core: Boolean(window.google?.maps?.Map),
+        places: Boolean(window.google?.maps?.places),
+        marker: Boolean(window.google?.maps?.marker),
+        advancedMarker: Boolean(window.google?.maps?.marker?.AdvancedMarkerElement),
+        version: window.google?.maps?.version
+      });
+      
       // Create the map instance
       this.map = new window.google.maps.Map(mapElement, {
         center: this.defaultLocation,
@@ -50,9 +76,21 @@ class MapsService {
       // Places API - Using the recommended approach over PlacesService
       if (window.google.maps.places) {
         console.log('✅ Places API available');
+      } else {
+        console.warn('⚠️ Places API not available - search functionality will be limited');
+      }
+      
+      // Verify marker library availability
+      if (!window.google?.maps?.marker) {
+        console.warn('⚠️ Marker library not available - will use legacy markers');
+      } else {
+        console.log('✅ Marker library available');
         
-        // We don't need to initialize PlacesService as we're using
-        // Place.findPlaceFromQuery/findPlaceFromPhoneNumber/searchByText instead
+        if (!window.google?.maps?.marker?.AdvancedMarkerElement) {
+          console.warn('⚠️ AdvancedMarkerElement not available - will use legacy markers');
+        } else {
+          console.log('✅ AdvancedMarkerElement available');
+        }
       }
       
       // Set up map event listeners
@@ -109,27 +147,56 @@ class MapsService {
     }
     
     // Create new marker - always try AdvancedMarkerElement first
+    const position = { lat, lng };
+    
     try {
-      // Check if AdvancedMarkerElement is available properly
-      if (window.google.maps.marker && typeof window.google.maps.marker.AdvancedMarkerElement === 'function') {
-        const position = { lat, lng };
+      // Check if marker library and AdvancedMarkerElement are available
+      if (window.google?.maps?.marker?.AdvancedMarkerElement) {
+        console.log('Creating temporary AdvancedMarkerElement');
+        
+        // Create a Pin element for better styling (red pin for temporary markers)
+        let pinElement;
+        if (window.google?.maps?.marker?.PinElement) {
+          pinElement = new window.google.maps.marker.PinElement({
+            background: '#FF4136', // Red color for temporary marker
+            borderColor: '#FFFFFF',
+            glyphColor: '#FFFFFF',
+            scale: 1.3
+          });
+        }
+        
         this.tempMarker = new window.google.maps.marker.AdvancedMarkerElement({
           position,
           map: this.map,
-          title: 'Selected Location'
+          title: 'Selected Location',
+          content: pinElement ? pinElement.element : undefined
         });
+        
+        console.log('Successfully created temporary AdvancedMarkerElement');
       } else {
         throw new Error('AdvancedMarkerElement constructor not available');
       }
     } catch (error) {
       // Fallback to legacy Marker if AdvancedMarkerElement fails
-      console.warn('AdvancedMarkerElement not available, using legacy Marker:', error.message);
-      this.tempMarker = new window.google.maps.Marker({
-        position: { lat, lng },
-        map: this.map,
-        animation: window.google.maps.Animation.DROP,
-        title: 'Selected Location'
-      });
+      console.warn('Falling back to legacy Marker for temporary marker:', error.message);
+      
+      try {
+        if (!window.google?.maps?.Marker) {
+          console.error('Neither AdvancedMarkerElement nor standard Marker is available');
+          return null;
+        }
+        
+        this.tempMarker = new window.google.maps.Marker({
+          position,
+          map: this.map,
+          animation: window.google.maps.Animation.DROP,
+          title: 'Selected Location'
+        });
+        console.log('Successfully created temporary legacy Marker');
+      } catch (markerError) {
+        console.error('Failed to create temporary marker:', markerError);
+        return null;
+      }
     }
     
     return this.tempMarker;
@@ -153,31 +220,72 @@ class MapsService {
     
     // Create a new marker - always try to use AdvancedMarkerElement first
     let marker;
+    const position = { lat: location.lat, lng: location.lng };
     
     try {
-      // Check if AdvancedMarkerElement is available - with proper path
-      if (window.google.maps.marker && typeof window.google.maps.marker.AdvancedMarkerElement === 'function') {
-        // Create position object
-        const position = { lat: location.lat, lng: location.lng };
+      // More detailed debug logging
+      console.debug('Google Maps API State:', {
+        mapsLoaded: !!window.google?.maps,
+        markerLibrary: !!window.google?.maps?.marker,
+        advancedMarker: typeof window.google?.maps?.marker?.AdvancedMarkerElement === 'function',
+        pinElement: typeof window.google?.maps?.marker?.PinElement === 'function',
+        standardMarker: typeof window.google?.maps?.Marker === 'function'
+      });
+      
+      // Check if marker library is properly loaded
+      if (!window.google?.maps?.marker) {
+        console.warn('Marker library not loaded. Available Google Maps objects:', 
+          window.google?.maps ? Object.keys(window.google.maps) : 'None');
+      }
+      
+      // Check if AdvancedMarkerElement is available with proper path
+      if (window.google?.maps?.marker?.AdvancedMarkerElement) {
+        console.log('Creating AdvancedMarkerElement...');
+        
+        // Create a Pin element for better styling
+        let pinElement;
+        if (window.google?.maps?.marker?.PinElement) {
+          pinElement = new window.google.maps.marker.PinElement({
+            background: '#4285F4', // Google blue color
+            borderColor: '#FFFFFF',
+            glyphColor: '#FFFFFF',
+            scale: 1.3 // Slightly larger than default
+          });
+        }
         
         // Use the recommended AdvancedMarkerElement
         marker = new window.google.maps.marker.AdvancedMarkerElement({
           position,
           map: this.map,
-          title: location.name || 'Location'
+          title: location.name || 'Location',
+          content: pinElement ? pinElement.element : undefined
         });
+        
+        console.log('Successfully created AdvancedMarkerElement');
       } else {
-        throw new Error('AdvancedMarkerElement not available');
+        throw new Error('AdvancedMarkerElement constructor not available');
       }
     } catch (error) {
       // Fallback to legacy Marker if AdvancedMarkerElement fails
-      console.warn('AdvancedMarkerElement not available, using legacy Marker:', error.message);
-      marker = new window.google.maps.Marker({
-        position: { lat: location.lat, lng: location.lng },
-        map: this.map,
-        title: location.name || 'Location',
-        animation: window.google.maps.Animation.DROP
-      });
+      console.warn('Falling back to legacy Marker:', error.message);
+      
+      try {
+        if (!window.google?.maps?.Marker) {
+          console.error('Neither AdvancedMarkerElement nor standard Marker is available');
+          return null;
+        }
+        
+        marker = new window.google.maps.Marker({
+          position,
+          map: this.map,
+          title: location.name || 'Location',
+          animation: window.google.maps.Animation.DROP
+        });
+        console.log('Successfully created legacy Marker');
+      } catch (markerError) {
+        console.error('Failed to create any marker:', markerError);
+        return null;
+      }
     }
     
     // Add click listener

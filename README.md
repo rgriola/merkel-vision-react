@@ -142,3 +142,24 @@ Benefits include:
 - Improved mobile support
 - Better internationalization
 - More reliable place selection
+
+## Troubleshooting
+
+### Google Maps Advanced Markers
+
+If you encounter warnings about "AdvancedMarkerElement not available" or see a message about `google.maps.Marker` being deprecated:
+
+1. **Browser Support**: Ensure you're using a modern browser that supports the latest Google Maps features
+2. **Library Loading**: The application attempts to load the required marker library automatically
+3. **Fallback Mechanism**: We automatically fall back to legacy markers if the advanced markers aren't available
+4. **Debug Logging**: Check the console for detailed information about available Google Maps components
+
+### Google Maps API Issues
+
+If maps aren't loading correctly:
+
+1. **Check API Key**: Ensure the Google Maps API key has the proper permissions and is not restricted in a way that prevents loading
+2. **Required Libraries**: This app requires the Places API and Maps JavaScript API v3 (beta)
+3. **Browser Permissions**: Allow the site to use your location if prompted
+4. **Network Issues**: Verify you have a stable internet connection
+5. **Clear Cache**: Try clearing your browser cache if you experience persistent issues

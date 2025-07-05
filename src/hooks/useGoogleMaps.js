@@ -11,14 +11,24 @@ export const useGoogleMaps = () => {
   
   // Load Google Maps API
   useEffect(() => {
-    // Function to check if Google Maps is fully loaded
+    // Function to check if Google Maps is fully loaded with all required libraries
     const isGoogleMapsLoaded = () => {
-      return Boolean(
+      const mapsLoaded = Boolean(
         window.google && 
         window.google.maps && 
         window.google.maps.Map && 
         window.google.maps.places
       );
+      
+      // Log the state of the libraries including marker availability
+      console.debug('Google Maps libraries state:', {
+        core: Boolean(window.google?.maps?.Map),
+        places: Boolean(window.google?.maps?.places),
+        marker: Boolean(window.google?.maps?.marker),
+        advancedMarker: Boolean(window.google?.maps?.marker?.AdvancedMarkerElement)
+      });
+      
+      return mapsLoaded;
     };
 
     // If already loaded, just set state
@@ -46,6 +56,13 @@ export const useGoogleMaps = () => {
       // Also attach to the existing load event
       existingScript.addEventListener('load', () => {
         console.log('Existing Google Maps script load event fired');
+        
+        // Double check that the marker library is available
+        setTimeout(() => {
+          if (!window.google?.maps?.marker) {
+            console.warn('Marker library not detected after script load event');
+          }
+        }, 500);
       });
       
       return () => clearInterval(checkInterval);
@@ -57,14 +74,22 @@ export const useGoogleMaps = () => {
     // Define the callback function
     window[callbackName] = () => {
       console.log('Google Maps API loaded via callback');
+      
+      // Check if marker library is available
+      if (!window.google?.maps?.marker) {
+        console.warn('Marker library not available in callback. Available Google Maps objects:', 
+          window.google?.maps ? Object.keys(window.google.maps) : 'None');
+      }
+      
       setIsLoaded(true);
       setLoadError(null);
     };
     
-    // Create and add the script
+    // Create and add the script with the marker library explicitly requested
     const script = document.createElement('script');
     script.id = 'google-maps-script'; 
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsConfig.apiKey}&libraries=places&callback=${callbackName}&loading=async`;
+    // Use v=beta to ensure access to the marker library, and explicitly request the marker library
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsConfig.apiKey}&libraries=places,marker&callback=${callbackName}&v=beta`;
     script.async = true;
     script.defer = true;
     
@@ -77,7 +102,13 @@ export const useGoogleMaps = () => {
     document.head.appendChild(script);
     
     return () => {
-      document.head.removeChild(script);
+      // Clean up script only if we're unmounting and it still exists
+      const scriptToRemove = document.getElementById('google-maps-script');
+      if (scriptToRemove) {
+        document.head.removeChild(scriptToRemove);
+      }
+      // Clean up the global callback
+      delete window[callbackName];
     };
   }, []);
   
