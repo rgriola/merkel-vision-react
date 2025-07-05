@@ -7,7 +7,7 @@ class MapsService {
     this.geocoder = null;
     this.autocomplete = null;
     this.placesService = null;
-    this.markers = new Map(); // For tracking markers by ID
+    this.markers = new Map(); // For tracking markers
     this.tempMarker = null; // For temporary markers during selection
     this.apiLoaded = false;
     this.mapReady = false;
@@ -214,11 +214,21 @@ class MapsService {
       }
     }
     
-    // Add a custom getPosition method to AdvancedMarkerElement if needed
-    if (this.tempMarker && !this.tempMarker.getPosition && this.tempMarker.position) {
-      this.tempMarker.getPosition = function() {
-        return this.position;
-      };
+    // Add compatibility methods to AdvancedMarkerElement if needed
+    if (this.tempMarker && this.tempMarker.position) {
+      // Add getPosition method for compatibility
+      if (!this.tempMarker.getPosition) {
+        this.tempMarker.getPosition = function() {
+          return this.position;
+        };
+      }
+      
+      // Add setPosition method for compatibility
+      if (!this.tempMarker.setPosition) {
+        this.tempMarker.setPosition = function(newPosition) {
+          this.position = newPosition;
+        };
+      }
     }
     
     return this.tempMarker;
@@ -236,7 +246,32 @@ class MapsService {
     if (this.markers.has(location.id)) {
       // Update existing marker position if needed
       const marker = this.markers.get(location.id);
-      marker.setPosition({ lat: location.lat, lng: location.lng });
+      const newPosition = { lat: location.lat, lng: location.lng };
+      
+      try {
+        // Different update methods depending on marker type
+        if (marker instanceof window.google.maps.marker?.AdvancedMarkerElement) {
+          // For AdvancedMarkerElement, set the position property directly
+          marker.position = newPosition;
+          console.log('Updated AdvancedMarkerElement position');
+        } else if (marker instanceof window.google.maps.Marker) {
+          // For legacy Marker, use the setPosition method
+          marker.setPosition(newPosition);
+          console.log('Updated legacy Marker position');
+        } else {
+          // Try both approaches if type detection fails
+          if (typeof marker.setPosition === 'function') {
+            marker.setPosition(newPosition);
+          } else if (marker.position !== undefined) {
+            marker.position = newPosition;
+          } else {
+            console.warn('Unable to update marker position - unknown marker type');
+          }
+        }
+      } catch (error) {
+        console.error('Error updating marker position:', error);
+      }
+      
       return marker;
     }
     
@@ -504,6 +539,12 @@ class MapsService {
    * @returns {Element|null} - The PlaceAutocompleteElement or null if setup failed
    */
   setupPlaceAutocomplete(containerElement) {
+    // Check if container element is valid
+    if (!containerElement) {
+      console.error('❌ No container element provided for PlaceAutocomplete');
+      return null;
+    }
+    
     // Check if Google Maps API is loaded
     if (!window.google || !window.google.maps) {
       console.error('❌ Google Maps API not loaded');
@@ -534,9 +575,16 @@ class MapsService {
         types: googleMapsConfig.places.types
       });
       
-      // Clear any existing content and append the place autocomplete element
-      containerElement.innerHTML = '';
-      containerElement.appendChild(placeAutocomplete);
+      // Safely clear and append the place autocomplete element
+      // First check if the container element is still in the DOM
+      if (document.body.contains(containerElement)) {
+        // Clear any existing content and append the place autocomplete element
+        containerElement.innerHTML = '';
+        containerElement.appendChild(placeAutocomplete);
+      } else {
+        console.warn('Container element is no longer in the DOM, cannot append PlaceAutocomplete');
+        return null;
+      }
       
       // Add event listener for place selection
       placeAutocomplete.addEventListener('gmp-placeselect', async (event) => {

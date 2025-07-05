@@ -29,15 +29,21 @@ const PlaceSearchComponent = ({ onPlaceSelected }) => {
         setSearching(true);
         try {
           console.log('Initializing PlaceAutocomplete...');
+          
+          // Ensure the container ref is still valid
+          if (!searchContainerRef.current) {
+            throw new Error('Search container reference is no longer valid');
+          }
+          
           // Get the maps service instance
           const mapsService = await import('../services/maps.service').then(module => module.default);
           
-          // Set up PlaceAutocompleteElement
+          // Set up PlaceAutocompleteElement with more detailed error handling
           const placeAutocomplete = mapsService.setupPlaceAutocomplete(searchContainerRef.current);
           
           if (!placeAutocomplete) {
             console.error('Failed to initialize PlaceAutocomplete element');
-            setError('Failed to initialize search component. Please ensure the Google Places API is enabled in your Google Cloud Console.');
+            setError('Failed to initialize search component. Please check the console for more details.');
             return;
           }
           
