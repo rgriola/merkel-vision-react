@@ -130,6 +130,63 @@ One challenge when working with both marker types is that they have different AP
    }
    ```
 
+## Comprehensive Marker Compatibility Solution
+
+When working with both `AdvancedMarkerElement` and legacy `Marker` in the same codebase, it's best to create compatibility wrappers to ensure consistent behavior across both types.
+
+### Adding Legacy Methods to AdvancedMarkerElement
+
+```javascript
+// When creating an AdvancedMarkerElement
+const marker = new google.maps.marker.AdvancedMarkerElement({
+  position,
+  map,
+  title
+});
+
+// Add legacy marker methods for compatibility
+marker.getPosition = function() {
+  return this.position;
+};
+
+marker.setPosition = function(newPosition) {
+  this.position = newPosition;
+};
+
+marker.setMap = function(map) {
+  this.map = map;
+};
+```
+
+### Handling Marker Updates
+
+When updating existing markers, detect the marker type and use the appropriate approach:
+
+```javascript
+function updateMarkerPosition(marker, position) {
+  try {
+    if (marker instanceof google.maps.marker.AdvancedMarkerElement) {
+      // For AdvancedMarkerElement
+      marker.position = position;
+    } else if (marker instanceof google.maps.Marker) {
+      // For legacy Marker
+      marker.setPosition(position);
+    } else {
+      // Fallback approach
+      if (typeof marker.setPosition === 'function') {
+        marker.setPosition(position);
+      } else if ('position' in marker) {
+        marker.position = position;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating marker position:', error);
+  }
+}
+```
+
+This approach ensures your code works with both marker types regardless of which one is available or being used.
+
 ## Common Issues and Solutions
 
 ### "AdvancedMarkerElement not available"

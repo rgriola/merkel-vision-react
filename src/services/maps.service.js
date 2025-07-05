@@ -134,11 +134,60 @@ class MapsService {
 
   // Center the map on a specific location
   centerMap(lat, lng, zoom = null) {
-    if (!this.map) return false;
+    if (!this.map) {
+      console.error('Cannot center map - map not initialized');
+      return false;
+    }
     
-    this.map.setCenter({ lat, lng });
-    if (zoom) this.map.setZoom(zoom);
-    return true;
+    console.log('centerMap called with:', { 
+      lat, 
+      lng, 
+      zoom,
+      latType: typeof lat, 
+      lngType: typeof lng 
+    });
+    
+    // Ensure we have valid coordinates
+    if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
+      console.warn('Non-numeric coordinates received, attempting to convert');
+      
+      // Try to convert to numbers if they're strings
+      const numLat = parseFloat(lat);
+      const numLng = parseFloat(lng);
+      
+      if (isNaN(numLat) || isNaN(numLng)) {
+        console.error('Invalid coordinates for centerMap - cannot convert to numbers:', { lat, lng });
+        return false;
+      }
+      
+      lat = numLat;
+      lng = numLng;
+      console.log('Successfully converted coordinates to numbers:', { lat, lng });
+    }
+    
+    // Check for out-of-range coordinates
+    if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      console.error('Coordinates out of valid range:', { lat, lng });
+      return false;
+    }
+    
+    console.log('Centering map to:', { lat, lng, zoom });
+    
+    try {
+      this.map.setCenter({ lat, lng });
+      
+      if (zoom !== null && zoom !== undefined) {
+        this.map.setZoom(zoom);
+      }
+      
+      // Add a temporary highlight marker to show where we centered
+      this.addTemporaryMarker(lat, lng);
+      
+      return true;
+    } catch (error) {
+      console.error('Error centering map:', error);
+      return false;
+    }
   }
 
   // Add a temporary marker for new location selection
@@ -318,12 +367,19 @@ class MapsService {
           content: pinElement ? pinElement.element : undefined
         });
         
-        // Add custom getPosition method for compatibility with legacy code expecting it
+        // Add compatibility methods for AdvancedMarkerElement to work with legacy code
         marker.getPosition = function() {
           return this.position;
         };
         
-        console.log('Successfully created AdvancedMarkerElement');
+        marker.setPosition = function(newPosition) {
+          this.position = newPosition;
+        };
+        
+        // Store position in _position property for additional compatibility
+        marker._position = position;
+        
+        console.log('Successfully created AdvancedMarkerElement with compatibility methods');
       } else {
         throw new Error('AdvancedMarkerElement constructor not available');
       }
@@ -380,47 +436,121 @@ class MapsService {
 
   // Show all markers on the map and fit bounds
   showAllMarkers() {
-    if (!this.map || this.markers.size === 0) return false;
+    if (!this.map) {
+      console.warn('Cannot show all markers - map not initialized');
+      return false;
+    }
+    
+    if (this.markers.size === 0) {
+      console.warn('No markers to show on map');
+      return false;
+    }
+    
+    console.log(`Showing all markers (${this.markers.size} total)`);
+    
+    // Debug log of all markers before processing
+    console.log('Markers before processing:', 
+      Array.from(this.markers.entries()).map(([id, marker]) => ({
+        id, 
+        type: marker instanceof window.google.maps.marker?.AdvancedMarkerElement ? 'AdvancedMarkerElement' : 
+              marker instanceof window.google.maps.Marker ? 'LegacyMarker' : 'Unknown',
+        hasPosition: !!marker.position,
+        hasGetPosition: typeof marker.getPosition === 'function'
+      }))
+    );
     
     const bounds = new window.google.maps.LatLngBounds();
-    this.markers.forEach(marker => {
+    let validPositionsFound = 0;
+    
+    this.markers.forEach((marker, id) => {
       try {
         // Handle both AdvancedMarkerElement and legacy Marker differently
         if (marker instanceof window.google.maps.marker?.AdvancedMarkerElement) {
           // For AdvancedMarkerElement, use position property
           if (marker.position) {
             bounds.extend(marker.position);
+            validPositionsFound++;
+            console.log(`Added AdvancedMarkerElement position for ID ${id}:`, marker.position);
+          } else {
+            console.warn(`AdvancedMarkerElement for ID ${id} has no position property`);
           }
         } else if (marker instanceof window.google.maps.Marker) {
           // For legacy Marker, use getPosition() method
-          bounds.extend(marker.getPosition());
-        } else {
-          // For unknown marker type, try to find position
-          const position = marker.position || (marker.getPosition && marker.getPosition());
+          const position = marker.getPosition();
           if (position) {
             bounds.extend(position);
+            validPositionsFound++;
+            console.log(`Added legacy Marker position for ID ${id}:`, position.toJSON());
           } else {
-            console.warn('Could not determine marker position', marker);
+            console.warn(`Legacy Marker for ID ${id} returned null from getPosition()`);
+          }
+        } else {
+          // For unknown marker type, try to find position
+          let position = null;
+          
+          // Try all possible ways to get position
+          if (marker.position) {
+            position = marker.position;
+            console.log(`Using position property for marker ID ${id}`);
+          } else if (typeof marker.getPosition === 'function') {
+            position = marker.getPosition();
+            console.log(`Using getPosition() method for marker ID ${id}`);
+          }
+          
+          if (position) {
+            // Ensure position has lat and lng properties or methods
+            let lat = null;
+            let lng = null;
+            
+            if (typeof position.lat === 'function') {
+              lat = position.lat();
+            } else if (typeof position.lat === 'number') {
+              lat = position.lat;
+            }
+            
+            if (typeof position.lng === 'function') {
+              lng = position.lng();
+            } else if (typeof position.lng === 'number') {
+              lng = position.lng;
+            }
+            
+            if (lat !== null && lng !== null) {
+              bounds.extend({ lat, lng });
+              validPositionsFound++;
+              console.log(`Added unknown marker type position for ID ${id}:`, { lat, lng });
+            } else {
+              console.warn(`Position for ID ${id} has invalid lat/lng values:`, position);
+            }
+          } else {
+            console.warn(`Could not determine marker position for ID ${id}`, marker);
           }
         }
       } catch (error) {
-        console.warn('Error processing marker in showAllMarkers:', error);
+        console.warn(`Error processing marker ${id} in showAllMarkers:`, error);
       }
     });
     
-    if (bounds.isEmpty()) {
+    if (validPositionsFound === 0 || bounds.isEmpty()) {
       console.warn('No valid marker positions found to create bounds');
       return false;
     }
     
-    this.map.fitBounds(bounds);
+    console.log(`Fitting map to bounds with ${validPositionsFound} valid positions`);
     
-    // If there's only one marker, zoom in
-    if (this.markers.size === 1) {
-      this.map.setZoom(this.searchZoom);
+    try {
+      this.map.fitBounds(bounds);
+      
+      // If there's only one marker, zoom in
+      if (validPositionsFound === 1) {
+        this.map.setZoom(this.searchZoom);
+        console.log(`Only one marker found, setting zoom to ${this.searchZoom}`);
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('Error applying bounds to map:', error);
+      return false;
     }
-    
-    return true;
   }
 
   // Search for a place/address using the new Places API

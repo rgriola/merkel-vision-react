@@ -55,8 +55,49 @@ const LocationList = () => {
 
   // Handle view location on map
   const handleViewLocation = (location) => {
+    console.log('View location triggered with:', location);
     setSelectedLocation(location);
-    centerMap(location.lat, location.lng, 15);
+    
+    // Ensure we have valid coordinates before trying to center the map
+    if (location && typeof location.lat !== 'undefined' && typeof location.lng !== 'undefined') {
+      // Detailed debug information about lat/lng properties
+      console.log('Location lat/lng properties:', {
+        lat: {
+          value: location.lat,
+          type: typeof location.lat,
+          isFunction: typeof location.lat === 'function',
+          isNumber: typeof location.lat === 'number',
+          isString: typeof location.lat === 'string'
+        },
+        lng: {
+          value: location.lng,
+          type: typeof location.lng,
+          isFunction: typeof location.lng === 'function',
+          isNumber: typeof location.lng === 'number',
+          isString: typeof location.lng === 'string'
+        }
+      });
+      
+      // Check if lat and lng are functions or properties
+      const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
+      const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+      
+      console.log('Centering map on:', { lat, lng });
+      
+      // Convert to numbers if needed
+      const numLat = parseFloat(lat);
+      const numLng = parseFloat(lng);
+      
+      if (isNaN(numLat) || isNaN(numLng)) {
+        console.error('Invalid coordinates after conversion:', { lat, lng, numLat, numLng });
+        return;
+      }
+      
+      // Always pass numeric values to centerMap
+      centerMap(numLat, numLng, 15);
+    } else {
+      console.error('Invalid location coordinates:', location);
+    }
   };
 
   // Handle edit location
