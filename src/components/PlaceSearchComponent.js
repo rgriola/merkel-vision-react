@@ -71,7 +71,7 @@ const PlaceSearchComponent = ({ onPlaceSelected }) => {
   return (
     <>
       <Box sx={{ width: '100%', mb: 2 }}>
-        {!isReady && (
+        {(searching || !isReady) && (
           <Box sx={{ display: 'flex', justifyContent: 'center', my: 1 }}>
             <CircularProgress size={24} />
           </Box>

@@ -24,17 +24,6 @@ export const LocationsProvider = ({ children }) => {
   
   const { user } = useAuth();
 
-  // Load locations when user changes
-  useEffect(() => {
-    if (user) {
-      loadLocations();
-    } else {
-      // Clear locations when not logged in
-      setLocations([]);
-      setLoading(false);
-    }
-  }, [user, loadLocations]);
-
   // Load all locations for the current user
   const loadLocations = useCallback(async () => {
     if (!user) return;
@@ -52,6 +41,17 @@ export const LocationsProvider = ({ children }) => {
       setLoading(false);
     }
   }, [user]);
+
+  // Load locations when user changes
+  useEffect(() => {
+    if (user) {
+      loadLocations();
+    } else {
+      // Clear locations when not logged in
+      setLocations([]);
+      setLoading(false);
+    }
+  }, [user, loadLocations]);
 
   // Add a new location
   const addLocation = async (locationData) => {
