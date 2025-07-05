@@ -12,15 +12,9 @@ export const googleMapsConfig = {
     types: ['geocode'], // Types of place results to return
     fields: ['displayName', 'formattedAddress', 'location', 'viewport', 'addressComponents'] // Fields to fetch for each place
   },
-  mapStyles: [
-    // Add custom map styles here if needed
-    // Example:
-    // {
-    //   featureType: "all",
-    //   elementType: "geometry",
-    //   stylers: [{ color: "#242f3e" }]
-    // }
-  ]
+  // Note: When using mapId, styles should be configured in the Google Cloud Console
+  // instead of here. These are only used when falling back to a map without mapId.
+  mapStyles: []
 };
 
 // This uses the production Google Maps API key from the legacy Merkel-View project

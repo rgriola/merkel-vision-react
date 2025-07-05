@@ -154,6 +154,7 @@ If you encounter warnings about "AdvancedMarkerElement not available" or see a m
 3. **Fallback Mechanism**: We automatically fall back to legacy markers if the advanced markers aren't available
 4. **Debug Logging**: Check the console for detailed information about available Google Maps components
 5. **Map ID**: Advanced Markers require a valid Map ID (we've provided one in the configuration)
+6. **Map Styling**: When using a Map ID, styles must be configured in the Google Cloud Console, not in code
 
 ### Google Maps API Issues
 

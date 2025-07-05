@@ -55,11 +55,10 @@ class MapsService {
         version: window.google?.maps?.version
       });
       
-      // Create the map instance with Map ID for Advanced Markers support
-      this.map = new window.google.maps.Map(mapElement, {
+      // Create the map options object
+      const mapOptions = {
         center: this.defaultLocation,
         zoom: this.defaultZoom,
-        styles: googleMapsConfig.mapStyles,
         mapTypeId: 'roadmap',
         gestureHandling: 'greedy',
         zoomControl: true,
@@ -67,9 +66,20 @@ class MapsService {
         scaleControl: true,
         streetViewControl: false,
         rotateControl: false,
-        fullscreenControl: true,
-        mapId: googleMapsConfig.mapId // Map ID required for Advanced Markers
-      });
+        fullscreenControl: true
+      };
+      
+      // If mapId is available, use it for Advanced Markers support
+      // Note: styles cannot be used together with mapId (controlled via cloud console instead)
+      if (googleMapsConfig.mapId) {
+        mapOptions.mapId = googleMapsConfig.mapId;
+      } else {
+        // Only apply styles when no mapId is present
+        mapOptions.styles = googleMapsConfig.mapStyles;
+      }
+      
+      // Create the map instance
+      this.map = new window.google.maps.Map(mapElement, mapOptions);
 
       // Initialize geocoder
       this.geocoder = new window.google.maps.Geocoder();

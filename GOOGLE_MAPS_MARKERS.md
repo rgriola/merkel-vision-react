@@ -169,6 +169,41 @@ One challenge when working with both marker types is that they have different AP
 
 This warning is normal and expected. Google is moving toward `AdvancedMarkerElement` but still supports the legacy marker. Our application uses it as a fallback to ensure compatibility.
 
+## Map ID and Styling Conflicts
+
+### Important Note on Map Styling with Map ID
+
+When using a Map ID with Google Maps, you cannot also specify styles directly in the JavaScript code. This is because maps with a Map ID have their styles managed through the Google Cloud Console.
+
+```javascript
+// INCORRECT - Will cause a warning
+const map = new google.maps.Map(mapElement, {
+  mapId: "YOUR_MAP_ID",
+  styles: [/* style array */] // This will conflict with mapId
+});
+
+// CORRECT - Use either mapId OR styles, not both
+const map = new google.maps.Map(mapElement, {
+  mapId: "YOUR_MAP_ID"
+  // styles are managed in Google Cloud Console
+});
+
+// ALTERNATIVE - If not using mapId
+const map = new google.maps.Map(mapElement, {
+  styles: [/* style array */]
+});
+```
+
+### How to Style Maps with Map ID
+
+1. Go to the Google Cloud Console
+2. Navigate to Maps Platform > Map Management
+3. Select or create your Map
+4. Use the Map Style Editor to customize your map's appearance
+5. Save the changes - they will automatically apply to any map using that Map ID
+
+This approach provides more powerful styling options and separates styling from your code, making it easier to update styles without redeploying your application.
+
 ## References
 
 - [Google Maps JavaScript API Documentation](https://developers.google.com/maps/documentation/javascript)
