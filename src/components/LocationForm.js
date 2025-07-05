@@ -15,7 +15,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useLocations } from '../contexts/locations.context';
-import { useGoogleMaps } from '../hooks/useGoogleMaps';
+import mapsService from '../services/maps.service';
 
 const LocationForm = ({ open, onClose, location = null }) => {
   // Form state
@@ -28,11 +28,11 @@ const LocationForm = ({ open, onClose, location = null }) => {
 
   // UI state
   const [loading, setLoading] = useState(false);
+  const [geocoding, setGeocoding] = useState(false);
   const [error, setError] = useState(null);
 
   // Hooks
   const { addLocation, updateLocation } = useLocations();
-  const { searchPlace } = useGoogleMaps();
 
   // Set form values when editing existing location
   useEffect(() => {
@@ -64,33 +64,81 @@ const LocationForm = ({ open, onClose, location = null }) => {
       return;
     }
     
-    if (!lat || !lng) {
-      setError('Location coordinates are required');
+    if (!address) {
+      setError('Address is required');
       return;
     }
-    
-    // Convert lat/lng to numbers
-    const latNum = parseFloat(lat);
-    const lngNum = parseFloat(lng);
-    
-    if (isNaN(latNum) || isNaN(lngNum)) {
-      setError('Invalid coordinates');
-      return;
-    }
-    
-    const locationData = {
-      name,
-      address,
-      lat: latNum,
-      lng: lngNum,
-      description,
-      notes
-    };
     
     setLoading(true);
     setError(null);
     
+    let finalLat = lat;
+    let finalLng = lng;
+    
     try {
+      // If coordinates are not provided, geocode the address
+      if (!lat || !lng) {
+        console.log('📍 Geocoding address:', address);
+        setGeocoding(true);
+        
+        try {
+          const geocodeResult = await mapsService.searchPlace(address);
+          finalLat = geocodeResult.lat;
+          finalLng = geocodeResult.lng;
+          
+          console.log('✅ Geocoding successful:', { lat: finalLat, lng: finalLng, result: geocodeResult });
+          
+          // Update the form with the geocoded coordinates
+          setLat(finalLat.toString());
+          setLng(finalLng.toString());
+          
+          // If the address was geocoded, use the formatted address from the result
+          if (geocodeResult.address) {
+            setAddress(geocodeResult.address);
+          }
+          
+          // Store geocoding result for later use in locationData
+          window.lastGeocodeResult = geocodeResult;
+        } catch (geocodeError) {
+          console.error('❌ Geocoding failed:', geocodeError);
+          setError(`Could not find location for address "${address}". Please check the address or enter coordinates manually.`);
+          return;
+        } finally {
+          setGeocoding(false);
+        }
+      } else {
+        // Convert existing lat/lng to numbers and validate
+        const latNum = parseFloat(finalLat);
+        const lngNum = parseFloat(finalLng);
+        
+        if (isNaN(latNum) || isNaN(lngNum)) {
+          setError('Invalid coordinates provided');
+          return;
+        }
+        
+        finalLat = latNum;
+        finalLng = lngNum;
+      }
+      
+      const locationData = {
+        name,
+        address,
+        lat: parseFloat(finalLat),
+        lng: parseFloat(finalLng),
+        description,
+        notes,
+        // Required fields for Firestore rules
+        state: window.lastGeocodeResult?.state || '',
+        city: window.lastGeocodeResult?.city || '',
+        category: 'filming_location', // Default category
+        addedBy: 'user' // Default value
+      };
+      
+      // Clean up temporary storage
+      delete window.lastGeocodeResult;
+      
+      console.log('💾 Saving location data:', locationData);
+      
       if (location) {
         // Update existing location
         await updateLocation(location.id, locationData);
@@ -98,16 +146,51 @@ const LocationForm = ({ open, onClose, location = null }) => {
         // Add new location
         await addLocation(locationData);
       }
+      
       onClose(true); // Close form with success
     } catch (error) {
       console.error('Error saving location:', error);
       setError(error.message || 'Failed to save location');
     } finally {
       setLoading(false);
+      setGeocoding(false);
     }
   };
 
-  // Look up address from coordinates
+  // Geocode address to get coordinates
+  const handleGeocodeAddress = async () => {
+    if (!address) {
+      setError('Please enter an address first');
+      return;
+    }
+    
+    setGeocoding(true);
+    setError(null);
+    
+    try {
+      console.log('📍 Geocoding address:', address);
+      const result = await mapsService.searchPlace(address);
+      
+      if (result) {
+        setLat(result.lat.toString());
+        setLng(result.lng.toString());
+        
+        // Update address with formatted version if available
+        if (result.address) {
+          setAddress(result.address);
+        }
+        
+        console.log('✅ Geocoding successful:', { lat: result.lat, lng: result.lng });
+      }
+    } catch (error) {
+      console.error('❌ Geocoding error:', error);
+      setError(`Could not find coordinates for address "${address}". Please check the address.`);
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  // Look up address from coordinates (reverse geocoding)
   const handleLookupAddress = async () => {
     if (!lat || !lng) {
       setError('Please enter coordinates first');
@@ -122,11 +205,11 @@ const LocationForm = ({ open, onClose, location = null }) => {
       return;
     }
     
-    setLoading(true);
+    setGeocoding(true);
     setError(null);
     
     try {
-      const result = await searchPlace(`${latNum},${lngNum}`);
+      const result = await mapsService.getLocationDetails(latNum, lngNum);
       if (result) {
         setAddress(result.address || '');
       }
@@ -134,7 +217,7 @@ const LocationForm = ({ open, onClose, location = null }) => {
       console.error('Error looking up address:', error);
       setError('Failed to look up address');
     } finally {
-      setLoading(false);
+      setGeocoding(false);
     }
   };
 
@@ -152,7 +235,7 @@ const LocationForm = ({ open, onClose, location = null }) => {
   return (
     <Dialog
       open={open}
-      onClose={() => !loading && onClose(false)}
+      onClose={() => !loading && !geocoding && onClose(false)}
       fullWidth
       maxWidth="sm"
     >
@@ -160,7 +243,7 @@ const LocationForm = ({ open, onClose, location = null }) => {
         {location ? 'Edit Location' : 'Add New Location'}
         <IconButton
           aria-label="close"
-          onClick={() => !loading && onClose(false)}
+          onClick={() => !loading && !geocoding && onClose(false)}
           sx={{ position: 'absolute', right: 8, top: 8 }}
         >
           <CloseIcon />
@@ -187,38 +270,10 @@ const LocationForm = ({ open, onClose, location = null }) => {
             disabled={loading}
           />
           
-          <Grid container spacing={2}>
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="lat"
-                label="Latitude"
-                name="lat"
-                value={lat}
-                onChange={(e) => setLat(e.target.value)}
-                disabled={loading}
-              />
-            </Grid>
-            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
-              <TextField
-                margin="normal"
-                required
-                fullWidth
-                id="lng"
-                label="Longitude"
-                name="lng"
-                value={lng}
-                onChange={(e) => setLng(e.target.value)}
-                disabled={loading}
-              />
-            </Grid>
-          </Grid>
-          
           <Box sx={{ display: 'flex', mt: 1 }}>
             <TextField
               margin="normal"
+              required
               fullWidth
               id="address"
               label="Address"
@@ -227,16 +282,60 @@ const LocationForm = ({ open, onClose, location = null }) => {
               onChange={(e) => setAddress(e.target.value)}
               disabled={loading}
               sx={{ mr: 1 }}
+              helperText="Enter the address and we'll automatically find the coordinates"
             />
             <Button
               variant="outlined"
-              onClick={handleLookupAddress}
-              disabled={loading || !lat || !lng}
+              onClick={handleGeocodeAddress}
+              disabled={loading || geocoding || !address}
               sx={{ mt: 2, minWidth: '120px' }}
             >
-              Lookup
+              {geocoding ? <CircularProgress size={20} /> : 'Find Coords'}
             </Button>
           </Box>
+          
+          <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+            Coordinates (Optional - will be auto-filled from address)
+          </Typography>
+          
+          <Grid container spacing={2}>
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <TextField
+                margin="normal"
+                fullWidth
+                id="lat"
+                label="Latitude"
+                name="lat"
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                disabled={loading}
+                helperText="Auto-filled from address"
+              />
+            </Grid>
+            <Grid sx={{ gridColumn: { xs: 'span 12', md: 'span 6' } }}>
+              <TextField
+                margin="normal"
+                fullWidth
+                id="lng"
+                label="Longitude"
+                name="lng"
+                value={lng}
+                onChange={(e) => setLng(e.target.value)}
+                disabled={loading}
+                helperText="Auto-filled from address"
+              />
+            </Grid>
+          </Grid>
+          
+          <Button
+            variant="text"
+            size="small"
+            onClick={handleLookupAddress}
+            disabled={loading || geocoding || !lat || !lng}
+            sx={{ mt: 1 }}
+          >
+            {geocoding ? 'Looking up...' : 'Reverse lookup address from coordinates'}
+          </Button>
           
           <TextField
             margin="normal"
@@ -269,22 +368,29 @@ const LocationForm = ({ open, onClose, location = null }) => {
       <DialogActions>
         <Button 
           onClick={handleClear} 
-          disabled={loading}
+          disabled={loading || geocoding}
         >
           Clear
         </Button>
         <Button 
           onClick={() => onClose(false)} 
-          disabled={loading}
+          disabled={loading || geocoding}
         >
           Cancel
         </Button>
         <Button 
           onClick={handleSubmit} 
           variant="contained" 
-          disabled={loading}
+          disabled={loading || geocoding}
         >
-          {loading ? <CircularProgress size={24} /> : (location ? 'Update' : 'Save')}
+          {loading || geocoding ? (
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <CircularProgress size={20} sx={{ mr: 1 }} />
+              {geocoding ? 'Finding Location...' : 'Saving...'}
+            </Box>
+          ) : (
+            location ? 'Update' : 'Save'
+          )}
         </Button>
       </DialogActions>
     </Dialog>

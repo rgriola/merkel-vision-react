@@ -134,50 +134,59 @@ class MapsService {
 
   // Center the map on a specific location
   centerMap(lat, lng, zoom = null) {
-    if (!this.map) {
-      console.error('Cannot center map - map not initialized');
-      return false;
-    }
-    
-    console.log('centerMap called with:', { 
+    console.log('🎯 centerMap called with:', { 
       lat, 
       lng, 
       zoom,
       latType: typeof lat, 
-      lngType: typeof lng 
+      lngType: typeof lng,
+      mapInitialized: !!this.map,
+      mapReady: this.mapReady
     });
+    
+    if (!this.map) {
+      console.error('❌ Cannot center map - map not initialized');
+      return false;
+    }
     
     // Ensure we have valid coordinates
     if (typeof lat !== 'number' || typeof lng !== 'number' || isNaN(lat) || isNaN(lng)) {
-      console.warn('Non-numeric coordinates received, attempting to convert');
+      console.warn('⚠️ Non-numeric coordinates received, attempting to convert');
       
       // Try to convert to numbers if they're strings
       const numLat = parseFloat(lat);
       const numLng = parseFloat(lng);
       
       if (isNaN(numLat) || isNaN(numLng)) {
-        console.error('Invalid coordinates for centerMap - cannot convert to numbers:', { lat, lng });
+        console.error('❌ Invalid coordinates for centerMap - cannot convert to numbers:', { lat, lng });
         return false;
       }
       
       lat = numLat;
       lng = numLng;
-      console.log('Successfully converted coordinates to numbers:', { lat, lng });
+      console.log('✅ Successfully converted coordinates to numbers:', { lat, lng });
     }
     
     // Check for out-of-range coordinates
     if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      console.error('Coordinates out of valid range:', { lat, lng });
+      console.error('❌ Coordinates out of valid range:', { lat, lng });
       return false;
     }
     
-    console.log('Centering map to:', { lat, lng, zoom });
+    console.log('🎯 Centering map to coordinates:', { lat, lng, zoom });
     
     try {
-      this.map.setCenter({ lat, lng });
+      // Create the position object
+      const position = { lat, lng };
       
+      // Set center first
+      this.map.setCenter(position);
+      console.log('✅ Map center set successfully');
+      
+      // Set zoom if specified
       if (zoom !== null && zoom !== undefined) {
         this.map.setZoom(zoom);
+        console.log('✅ Map zoom set to:', zoom);
       }
       
       // Remove any existing temporary marker first
@@ -185,19 +194,25 @@ class MapsService {
         try {
           this.tempMarker.setMap(null);
           this.tempMarker = null;
+          console.log('✅ Previous temporary marker removed');
         } catch (error) {
-          console.warn('Error removing previous temporary marker:', error);
+          console.warn('⚠️ Error removing previous temporary marker:', error);
         }
       }
       
       // Add a temporary highlight marker to show where we centered
-      this.addTemporaryMarker(lat, lng);
+      console.log('📍 Adding temporary marker at centered location');
+      const markerResult = this.addTemporaryMarker(lat, lng);
       
-      console.log('Map successfully centered and temporary marker added');
-      
-      return true;
+      if (markerResult) {
+        console.log('✅ Map successfully centered and temporary marker added');
+        return true;
+      } else {
+        console.warn('⚠️ Map centered but temporary marker failed to add');
+        return true; // Still consider it a success since the main operation worked
+      }
     } catch (error) {
-      console.error('Error centering map:', error);
+      console.error('❌ Error centering map:', error);
       return false;
     }
   }
@@ -773,6 +788,8 @@ class MapsService {
           const lat = place.location.lat;
           const lng = place.location.lng;
           
+          console.log('Place selected:', { lat, lng, name: place.displayName });
+          
           if (this.map) {
             console.log('Map available, centering on selected place');
             if (place.viewport) {
@@ -786,7 +803,6 @@ class MapsService {
           } else {
             console.log('Map not yet initialized, storing location data only');
           }
-          this.addTemporaryMarker(lat, lng);
           
           // Extract address components
           const addressComponents = {};

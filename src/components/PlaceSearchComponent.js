@@ -9,6 +9,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { useGoogleMaps } from '../hooks/useGoogleMaps';
+import mapsService from '../services/maps.service';
 
 const PlaceSearchComponent = ({ onPlaceSelected }) => {
   const searchContainerRef = useRef(null);
@@ -36,9 +37,6 @@ const PlaceSearchComponent = ({ onPlaceSelected }) => {
           }
           
           // Get the maps service instance
-          const mapsService = await import('../services/maps.service').then(module => module.default);
-          
-          // Set up PlaceAutocompleteElement with more detailed error handling
           const placeAutocomplete = mapsService.setupPlaceAutocomplete(searchContainerRef.current);
           
           if (!placeAutocomplete) {

@@ -55,68 +55,97 @@ const LocationList = () => {
 
   // Handle view location on map
   const handleViewLocation = (location) => {
-    console.log('View location triggered with:', location);
+    console.log('=== VIEW LOCATION TRIGGERED ===');
+    console.log('Raw location object:', location);
+    console.log('Location keys:', Object.keys(location));
+    
     setSelectedLocation(location);
     
-    // Ensure we have valid coordinates before trying to center the map
-    if (location && typeof location.lat !== 'undefined' && typeof location.lng !== 'undefined') {
-      // Detailed debug information about lat/lng properties
-      console.log('Location lat/lng properties:', {
-        lat: {
-          value: location.lat,
-          type: typeof location.lat,
-          isFunction: typeof location.lat === 'function',
-          isNumber: typeof location.lat === 'number',
-          isString: typeof location.lat === 'string'
-        },
-        lng: {
-          value: location.lng,
-          type: typeof location.lng,
-          isFunction: typeof location.lng === 'function',
-          isNumber: typeof location.lng === 'number',
-          isString: typeof location.lng === 'string'
-        }
-      });
-      
-      // Check if lat and lng are functions or properties
-      const lat = typeof location.lat === 'function' ? location.lat() : location.lat;
-      const lng = typeof location.lng === 'function' ? location.lng() : location.lng;
-      
-      console.log('Centering map on:', { lat, lng });
-      
-      // Convert to numbers if needed
-      const numLat = parseFloat(lat);
-      const numLng = parseFloat(lng);
-      
-      if (isNaN(numLat) || isNaN(numLng)) {
-        console.error('Invalid coordinates after conversion:', { lat, lng, numLat, numLng });
-        return;
-      }
-      
-      // Force a higher zoom level and add a small delay to ensure map is ready
-      setTimeout(() => {
-        console.log('Attempting to center map with delay...');
-        const success = centerMap(numLat, numLng, 18); // Higher zoom level
-        console.log('Center map result:', success);
-        
-        // If centering failed, try again with a different approach
-        if (!success) {
-          console.log('First attempt failed, trying again...');
-          setTimeout(() => {
-            centerMap(numLat, numLng, 16);
-          }, 500);
-        }
-      }, 100);
-    } else {
-      console.error('Invalid location coordinates:', location);
+    // Extract coordinates with multiple fallback approaches
+    let lat, lng;
+    
+    // Method 1: Direct access to lat/lng properties
+    if (location.lat !== undefined && location.lng !== undefined) {
+      lat = typeof location.lat === 'function' ? location.lat() : location.lat;
+      lng = typeof location.lng === 'function' ? location.lng() : location.lng;
+      console.log('Method 1 - Direct lat/lng:', { lat, lng });
     }
+    
+    // Method 2: Check for coordinates object
+    if ((lat === undefined || lng === undefined) && location.coordinates) {
+      lat = location.coordinates.lat || location.coordinates.latitude;
+      lng = location.coordinates.lng || location.coordinates.longitude;
+      console.log('Method 2 - Coordinates object:', { lat, lng });
+    }
+    
+    // Method 3: Check for latitude/longitude properties
+    if ((lat === undefined || lng === undefined)) {
+      lat = location.latitude;
+      lng = location.longitude;
+      console.log('Method 3 - Latitude/longitude:', { lat, lng });
+    }
+    
+    // Method 4: Check for position object
+    if ((lat === undefined || lng === undefined) && location.position) {
+      lat = location.position.lat || location.position.latitude;
+      lng = location.position.lng || location.position.longitude;
+      console.log('Method 4 - Position object:', { lat, lng });
+    }
+    
+    console.log('Final extracted coordinates:', { lat, lng, types: { lat: typeof lat, lng: typeof lng } });
+    
+    // Validate and convert coordinates
+    const numLat = parseFloat(lat);
+    const numLng = parseFloat(lng);
+    
+    if (isNaN(numLat) || isNaN(numLng)) {
+      console.error('❌ Invalid coordinates - cannot convert to numbers:', { 
+        lat, lng, numLat, numLng,
+        location: location 
+      });
+      alert('Unable to locate this position on the map. The coordinates may be invalid.');
+      return;
+    }
+    
+    // Validate coordinate ranges
+    if (numLat < -90 || numLat > 90 || numLng < -180 || numLng > 180) {
+      console.error('❌ Coordinates out of valid range:', { numLat, numLng });
+      alert('Invalid coordinates detected. Latitude must be between -90 and 90, longitude between -180 and 180.');
+      return;
+    }
+    
+    console.log('✅ Valid coordinates found, centering map...', { numLat, numLng });
+    
+    // Try to center the map with multiple approaches
+    const attemptMapCenter = (attemptNumber = 1) => {
+      console.log(`Centering attempt #${attemptNumber}...`);
+      const success = centerMap(numLat, numLng, 18);
+      console.log(`Attempt #${attemptNumber} result:`, success);
+      
+      if (!success && attemptNumber < 3) {
+        // Try again with different zoom levels
+        setTimeout(() => {
+          attemptMapCenter(attemptNumber + 1);
+        }, 300 * attemptNumber); // Increasing delay
+      } else if (!success) {
+        console.error('❌ All map centering attempts failed');
+        alert('Unable to center the map on this location. Please try again.');
+      }
+    };
+    
+    // Add a small delay to ensure map is ready
+    setTimeout(() => {
+      attemptMapCenter();
+    }, 100);
   };
 
   // Handle edit location
   const handleEditLocation = (location) => {
-    setSelectedLocation(location);
-    // Open edit modal/form (will be implemented later)
     console.log('Edit location:', location);
+    setSelectedLocation(location);
+    // TODO: Open edit modal/form - this needs to be connected to the parent Dashboard component
+    // For now, we'll just show an alert
+    alert(`Edit functionality for "${location.name || 'this location'}" will be implemented next.`);
   };
 
   // Handle delete location
