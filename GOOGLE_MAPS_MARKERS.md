@@ -73,6 +73,54 @@ try {
 }
 ```
 
+## API Compatibility Challenges
+
+### Different APIs Between Marker Types
+
+One challenge when working with both marker types is that they have different APIs:
+
+| Feature | Legacy Marker | Advanced Marker |
+|---------|--------------|-----------------|
+| Get position | `marker.getPosition()` | `marker.position` |
+| Set position | `marker.setPosition(latLng)` | `marker.position = latLng` |
+| Set map | `marker.setMap(map)` | `marker.map = map` |
+
+### Compatibility Solutions
+
+1. **Custom Compatibility Methods**: You can add compatibility methods to AdvancedMarkerElement:
+   ```javascript
+   // Add compatibility with legacy marker methods
+   if (marker instanceof google.maps.marker.AdvancedMarkerElement) {
+     // Add getPosition() for compatibility
+     marker.getPosition = function() {
+       return this.position;
+     };
+   }
+   ```
+
+2. **Type Detection**: Check marker type before accessing properties/methods:
+   ```javascript
+   if (marker instanceof google.maps.marker.AdvancedMarkerElement) {
+     // Use position property
+     bounds.extend(marker.position);
+   } else {
+     // Use getPosition() method
+     bounds.extend(marker.getPosition());
+   }
+   ```
+
+3. **Generic Approach**: Try both approaches with error handling:
+   ```javascript
+   try {
+     const position = marker.position || marker.getPosition();
+     if (position) {
+       bounds.extend(position);
+     }
+   } catch (error) {
+     console.warn('Could not get marker position:', error);
+   }
+   ```
+
 ## Common Issues and Solutions
 
 ### "AdvancedMarkerElement not available"

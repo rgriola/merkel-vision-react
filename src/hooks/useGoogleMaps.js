@@ -89,7 +89,8 @@ export const useGoogleMaps = () => {
     const script = document.createElement('script');
     script.id = 'google-maps-script'; 
     // Use v=beta to ensure access to the marker library, and explicitly request the marker library
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsConfig.apiKey}&libraries=places,marker&callback=${callbackName}&v=beta`;
+    // Also add loading=async parameter to address the warning
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsConfig.apiKey}&libraries=places,marker&callback=${callbackName}&v=beta&loading=async`;
     script.async = true;
     script.defer = true;
     

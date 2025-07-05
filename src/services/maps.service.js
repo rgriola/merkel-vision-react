@@ -172,6 +172,10 @@ class MapsService {
           content: pinElement ? pinElement.element : undefined
         });
         
+        // Store position reference separately for AdvancedMarkerElement
+        // This helps with methods that expect getPosition()
+        this.tempMarker._position = position;
+        
         console.log('Successfully created temporary AdvancedMarkerElement');
       } else {
         throw new Error('AdvancedMarkerElement constructor not available');
@@ -197,6 +201,13 @@ class MapsService {
         console.error('Failed to create temporary marker:', markerError);
         return null;
       }
+    }
+    
+    // Add a custom getPosition method to AdvancedMarkerElement if needed
+    if (this.tempMarker && !this.tempMarker.getPosition && this.tempMarker.position) {
+      this.tempMarker.getPosition = function() {
+        return this.position;
+      };
     }
     
     return this.tempMarker;
@@ -261,6 +272,11 @@ class MapsService {
           content: pinElement ? pinElement.element : undefined
         });
         
+        // Add custom getPosition method for compatibility with legacy code expecting it
+        marker.getPosition = function() {
+          return this.position;
+        };
+        
         console.log('Successfully created AdvancedMarkerElement');
       } else {
         throw new Error('AdvancedMarkerElement constructor not available');
@@ -322,8 +338,34 @@ class MapsService {
     
     const bounds = new window.google.maps.LatLngBounds();
     this.markers.forEach(marker => {
-      bounds.extend(marker.getPosition());
+      try {
+        // Handle both AdvancedMarkerElement and legacy Marker differently
+        if (marker instanceof window.google.maps.marker?.AdvancedMarkerElement) {
+          // For AdvancedMarkerElement, use position property
+          if (marker.position) {
+            bounds.extend(marker.position);
+          }
+        } else if (marker instanceof window.google.maps.Marker) {
+          // For legacy Marker, use getPosition() method
+          bounds.extend(marker.getPosition());
+        } else {
+          // For unknown marker type, try to find position
+          const position = marker.position || (marker.getPosition && marker.getPosition());
+          if (position) {
+            bounds.extend(position);
+          } else {
+            console.warn('Could not determine marker position', marker);
+          }
+        }
+      } catch (error) {
+        console.warn('Error processing marker in showAllMarkers:', error);
+      }
     });
+    
+    if (bounds.isEmpty()) {
+      console.warn('No valid marker positions found to create bounds');
+      return false;
+    }
     
     this.map.fitBounds(bounds);
     
