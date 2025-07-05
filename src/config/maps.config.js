@@ -1,6 +1,7 @@
 // Google Maps API configuration
 export const googleMapsConfig = {
   apiKey: "AIzaSyCHQECnK2DXcNXIQR0ZfvIEPrAJWIH8JsM",
+  mapId: "8e0a97af9386fef", // Map ID required for Advanced Markers
   defaultCenter: { lat: 39.8283, lng: -98.5795 }, // Center of US
   defaultZoom: 4,
   searchZoom: 15,

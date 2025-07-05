@@ -55,7 +55,7 @@ class MapsService {
         version: window.google?.maps?.version
       });
       
-      // Create the map instance
+      // Create the map instance with Map ID for Advanced Markers support
       this.map = new window.google.maps.Map(mapElement, {
         center: this.defaultLocation,
         zoom: this.defaultZoom,
@@ -67,7 +67,8 @@ class MapsService {
         scaleControl: true,
         streetViewControl: false,
         rotateControl: false,
-        fullscreenControl: true
+        fullscreenControl: true,
+        mapId: googleMapsConfig.mapId // Map ID required for Advanced Markers
       });
 
       // Initialize geocoder

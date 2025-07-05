@@ -29,7 +29,16 @@ To use `AdvancedMarkerElement`, you need:
    script.src = "https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places,marker&v=beta";
    ```
 
-2. **Browser Support**: Modern browser with Web Components support
+2. **Map ID**: Your map must be initialized with a valid Map ID
+   ```javascript
+   const map = new google.maps.Map(mapElement, {
+     center: { lat: 37.7749, lng: -122.4194 },
+     zoom: 12,
+     mapId: "YOUR_MAP_ID" // Required for Advanced Markers
+   });
+   ```
+
+3. **Browser Support**: Modern browser with Web Components support
 
 ### Usage Example
 
@@ -129,12 +138,32 @@ One challenge when working with both marker types is that they have different AP
 - Marker library not loaded in the API request
 - Using an older version of Google Maps JavaScript API
 - Browser compatibility issues
+- Missing Map ID in map initialization
 
 **Solutions**:
 1. Ensure you include `libraries=marker` in the API request
 2. Use `v=beta` parameter in the API URL
 3. Check browser compatibility
 4. Verify the API key has access to the Marker library
+5. Add a valid Map ID when initializing the map
+
+### "The map is initialized without a valid Map ID"
+
+**Causes**:
+- Missing Map ID in the map initialization options
+- Invalid Map ID format
+- Map ID not created or configured in Google Cloud Console
+
+**Solutions**:
+1. Create a Map ID in Google Cloud Console (Maps Platform > Map Management)
+2. Add the Map ID to your map initialization:
+   ```javascript
+   const map = new google.maps.Map(mapElement, {
+     // other options...
+     mapId: "YOUR_MAP_ID"
+   });
+   ```
+3. Verify your API key has access to the Map ID
 
 ### "google.maps.Marker is deprecated"
 

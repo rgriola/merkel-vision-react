@@ -153,6 +153,7 @@ If you encounter warnings about "AdvancedMarkerElement not available" or see a m
 2. **Library Loading**: The application attempts to load the required marker library automatically
 3. **Fallback Mechanism**: We automatically fall back to legacy markers if the advanced markers aren't available
 4. **Debug Logging**: Check the console for detailed information about available Google Maps components
+5. **Map ID**: Advanced Markers require a valid Map ID (we've provided one in the configuration)
 
 ### Google Maps API Issues
 
